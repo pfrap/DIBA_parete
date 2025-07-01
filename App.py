@@ -174,7 +174,7 @@ if cod_padre:
             new_width = int((float(img.size[0]) * float(width_percent)))
             img_resized = img.resize((new_width, fixed_height), Image.LANCZOS)
             with col2:
-                st.image(img_resized, use_container_width=True)
+                st.image(img_resized, use_container_width=False)
         else:
             with col2:
                 st.warning(f"🖼️ Immagine non trovata per `{cod_padre}`")
