@@ -1,0 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment folders
+env/
+venv/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VSCode settings
+.vscode/
+
+# Streamlit specific
+.streamlit/
+
+# Python cache
+*.pyc
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data files (se vuoi escludere dati grandi)
+data/
+*.csv
+*.xlsx
+
+# Uploaded files or output
+uploads/
+output/
