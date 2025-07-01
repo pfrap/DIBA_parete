@@ -172,8 +172,7 @@ if cod_padre:
             fixed_height = 260
             width_percent = (fixed_height / float(img.size[1]))
             new_width = int((float(img.size[0]) * float(width_percent)))
-            img_resized = img.resize((new_width, fixed_height), Image.ANTIALIAS)
-
+            img_resized = img.resize((new_width, fixed_height), Image.LANCZOS)
             with col2:
                 st.image(img_resized, use_container_width=False)
         else:
