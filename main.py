@@ -97,8 +97,12 @@ if not df_merged.empty:
 
     with col1:
         st.dataframe(df_summary, use_container_width=True)
-        st.markdown(f"Peso barre grezze per gruppo: `{df_summary['PESO_GREZZO_KG'].iloc[0]:.2f}kg`")
-        st.markdown(f"Peso specifico gruppo: `{df_summary['KG/ML'].iloc[0]:.2f} kg/ml`")
+        #st.markdown(f"Peso barre grezze per gruppo: `{df_summary['PESO_GREZZO_KG'].iloc[0]:.2f}kg`")
+        #st.markdown(f"Peso specifico gruppo: `{df_summary['KG/ML'].iloc[0]:.2f} kg/ml`")
+        st.metric("Peso barre grezze per gruppo", f"{df_summary['PESO_GREZZO_KG'].iloc[0]:.2f} kg")
+        st.metric("Peso specifico gruppo", f"{df_summary['KG/ML'].iloc[0]:.2f} kg/ml")
+
+
 else:
     with col1:
         st.warning("Nessun dato disponibile con i filtri selezionati.")
