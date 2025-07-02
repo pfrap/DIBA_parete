@@ -22,6 +22,13 @@ def load_barre():
 df_distinta = load_distinta()
 df_barre = load_barre()
 
+df_merged_complete = pd.merge(
+    df_distinta,
+    df_barre,
+    how="left",
+    on="ARTICOLO_FIGLIO"
+)
+
 # --- UI Sidebar ---
 st.sidebar.header("🎛️ Filtri Distinta")
 
@@ -38,7 +45,7 @@ filtered_c1 = filtered_cod[filtered_cod["C1"] == selected_c1]
 selected_c2 = st.sidebar.selectbox("C2", sorted(filtered_c1["C2"].unique()))
 filtered_c2 = filtered_c1[filtered_c1["C2"] == selected_c2]
 
-# Selezione gruppo (CONCAT_3 equivale a CODICE_PADRE)
+# Selezione gruppo
 selected_padre = st.sidebar.selectbox("Codice articolo", sorted(filtered_c2["CONCAT_3"].unique()))
 df_filtered_distinta = df_distinta[df_distinta["CONCAT_3"] == selected_padre]
 
@@ -81,7 +88,6 @@ descrizione_finitura = df_barre[df_barre["FINITURA"] == selected_finitura]["DESC
 st.markdown(f"Visualizzazione per finitura `{selected_finitura}, {descrizione_finitura}` e lunghezza `{selected_length} mm`")
 
 
-col1, col2 = st.columns([2, 1])
 
 if not df_merged.empty:
     df_summary = df_merged.groupby("CONCAT_3").agg({
@@ -89,22 +95,25 @@ if not df_merged.empty:
         "SISTEMA": "first",
         "C1": "first",
         "C2": "first",
-        "UNIT": "first",
         "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE_BREVE": "first",
+        "UNIT_ARTICOLO_PADRE": "first",
         "PESO_GREZZO_KG": "sum",
         "KG/ML": "sum"
     }).reset_index()
-
+    st.dataframe(df_summary, use_container_width=True)
+    
+    col1, col2 = st.columns([2, 1])
     with col1:
-        st.dataframe(df_summary, use_container_width=True)
+        col3, col4 = st.columns([1, 1])
         #st.markdown(f"Peso barre grezze per gruppo: `{df_summary['PESO_GREZZO_KG'].iloc[0]:.2f}kg`")
         #st.markdown(f"Peso specifico gruppo: `{df_summary['KG/ML'].iloc[0]:.2f} kg/ml`")
-        st.metric("Peso barre grezze per gruppo", f"{df_summary['PESO_GREZZO_KG'].iloc[0]:.2f} kg")
-        st.metric("Peso specifico gruppo", f"{df_summary['KG/ML'].iloc[0]:.2f} kg/ml")
-
+        with col3:
+            st.metric("Peso barre grezze per gruppo", f"{df_summary['PESO_GREZZO_KG'].iloc[0]:.2f} kg")
+        with col4:
+            st.metric("Peso specifico gruppo", f"{df_summary['KG/ML'].iloc[0]:.2f} kg/ml")
 
 else:
-    with col1:
+    with col1: # type: ignore
         st.warning("Nessun dato disponibile con i filtri selezionati.")
 
 # --- Immagine gruppo ---
@@ -138,8 +147,12 @@ if not df_merged.empty:
     ]], use_container_width=True)
 
     # Download CSV
-    csv = df_merged.to_csv(index=False)
-    st.download_button("📥 Scarica CSV", data=csv, file_name="distinta_filtrata.csv", mime="text/csv")
+    with col2:
+        csv_df_merged = df_merged.to_csv(index=False)
+        st.download_button("Scarica distinta componente", data=csv_df_merged, file_name="distinta_filtrata.csv", mime="text/csv")
+        csv_df_merged_complete=df_merged_complete.to_csv(index=False)
+        st.download_button("Scarica distinta completa", data=csv_df_merged_complete, file_name="distinta_completa.csv", mime="text/csv")
+
 else:
     st.error("Nessuna combinazione trovata per i filtri selezionati.")
     st.info("Prova a cambiare lunghezza o finitura.")
