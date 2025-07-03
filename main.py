@@ -123,10 +123,6 @@ if not img_row.empty:
     raw_img_path = img_row["IMMAGINE_NOME_FILE"].iloc[0]
     filename = os.path.basename(raw_img_path)
     image_path = os.path.join("images", filename)
-    
-    st.text(f"Path immagine: {image_path}")
-    st.text(f"File esiste? {os.path.exists(image_path)}")
-
     if os.path.exists(image_path):
         img = Image.open(image_path)
         fixed_height = 260
