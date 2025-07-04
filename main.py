@@ -54,27 +54,72 @@ if st.session_state["logged_in"]:
         on="ARTICOLO_FIGLIO"
     )
 
-    # --- UI Sidebar ---
-    st.sidebar.header("🎛️ Filtri Distinta")
+    def sidebar_filtri_distinta(df_distinta):
+        st.sidebar.header("🎛️ Filtri Distinta")
 
-    # Filtri dinamici
-    selected_macro = st.sidebar.selectbox("Macro sistema", sorted(df_distinta["MACRO_SISTEMA"].unique()))
-    filtered_macro = df_distinta[df_distinta["MACRO_SISTEMA"] == selected_macro]
+        tutti_codici = sorted(df_distinta["CONCAT_3"].unique())
+        selected_padre_input = st.sidebar.text_input("Ricerca diretta")
 
-    selected_cod_sistema = st.sidebar.selectbox("Codice sistema", sorted(filtered_macro["SISTEMA"].unique()))
-    filtered_cod = filtered_macro[filtered_macro["SISTEMA"] == selected_cod_sistema]
+        # Variabili default per i filtri
+        default_macro = None
+        default_sistema = None
+        default_c1 = None
+        default_c2 = None
+        selected_padre = None
 
-    selected_c1 = st.sidebar.selectbox("C1_DESCRIZIONE", sorted(filtered_cod["C1_DESCRIZIONE"].unique()))
-    filtered_c1 = filtered_cod[filtered_cod["C1_DESCRIZIONE"] == selected_c1]
+        if selected_padre_input in tutti_codici:
+            riga = df_distinta[df_distinta["CONCAT_3"] == selected_padre_input].iloc[0]
+            default_macro = riga["MACRO_SISTEMA"]
+            default_sistema = riga["SISTEMA"]
+            default_c1 = riga["C1_DESCRIZIONE"]
+            default_c2 = riga["C2_DESCRIZIONE"]
+            selected_padre = selected_padre_input
 
+        macro_opzioni = sorted(df_distinta["MACRO_SISTEMA"].unique())
+        selected_macro = st.sidebar.selectbox(
+            "Macro sistema",
+            macro_opzioni,
+            index=macro_opzioni.index(default_macro) if default_macro in macro_opzioni else 0
+        )
+        filtered_macro = df_distinta[df_distinta["MACRO_SISTEMA"] == selected_macro]
 
-    selected_c2 = st.sidebar.selectbox("C2_DESCRIZIONE", sorted(filtered_c1["C2_DESCRIZIONE"].unique()))
-    filtered_c2 = filtered_c1[filtered_c1["C2_DESCRIZIONE"] == selected_c2]
+        sistema_opzioni = sorted(filtered_macro["SISTEMA"].unique())
+        selected_cod_sistema = st.sidebar.selectbox(
+            "Codice sistema",
+            sistema_opzioni,
+            index=sistema_opzioni.index(default_sistema) if default_sistema in sistema_opzioni else 0
+        )
+        filtered_cod = filtered_macro[filtered_macro["SISTEMA"] == selected_cod_sistema]
 
+        c1_opzioni = sorted(filtered_cod["C1_DESCRIZIONE"].unique())
+        selected_c1 = st.sidebar.selectbox(
+            "C1_DESCRIZIONE",
+            c1_opzioni,
+            index=c1_opzioni.index(default_c1) if default_c1 in c1_opzioni else 0
+        )
+        filtered_c1 = filtered_cod[filtered_cod["C1_DESCRIZIONE"] == selected_c1]
 
-    # Selezione gruppo
-    selected_padre = st.sidebar.selectbox("Codice articolo", sorted(filtered_c2["CONCAT_3"].unique()))
-    df_filtered_distinta = df_distinta[df_distinta["CONCAT_3"] == selected_padre] ############ Questo è il df della distinta filtrata #############
+        c2_opzioni = sorted(filtered_c1["C2_DESCRIZIONE"].unique())
+        selected_c2 = st.sidebar.selectbox(
+            "C2_DESCRIZIONE",
+            c2_opzioni,
+            index=c2_opzioni.index(default_c2) if default_c2 in c2_opzioni else 0
+        )
+        filtered_c2 = filtered_c1[filtered_c1["C2_DESCRIZIONE"] == selected_c2]
+
+        if selected_padre is not None:
+            df_filtered_distinta = df_distinta[df_distinta["CONCAT_3"] == selected_padre]
+        else:
+            codici_possibili = sorted(filtered_c2["CONCAT_3"].unique())
+            selected_padre = st.sidebar.selectbox("Codice articolo", codici_possibili)
+            df_filtered_distinta = df_distinta[df_distinta["CONCAT_3"] == selected_padre]
+
+        return df_filtered_distinta, selected_padre, selected_macro, selected_cod_sistema, selected_c1, selected_c2
+
+    # --- Nel main script dopo aver caricato df_distinta ---
+    df_filtered_distinta, selected_padre, selected_macro, selected_cod_sistema, selected_c1, selected_c2 = sidebar_filtri_distinta(df_distinta)
+
+    # Da qui puoi proseguire usando df_filtered_distinta e i filtri per la visualizzazione e ulteriori operazioni
 
     # --- Filtro barre ---
     articoli_filtrati = df_filtered_distinta["ARTICOLO_FIGLIO"].unique()
