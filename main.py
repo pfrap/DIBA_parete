@@ -112,14 +112,22 @@ if st.session_state["logged_in"]:
 
     # --- Layout ---
     st.title("Distinta base parete Unifor")
-    descrizione_finitura = df_barre[df_barre["FINITURA"] == selected_finitura]["DESCRIZIONE FINITURA"].iloc[0]
+    #descrizione_finitura = df_barre[df_barre["FINITURA"] == selected_finitura]["DESCRIZIONE FINITURA"].iloc[0]
+    df_desc = df_barre[df_barre["FINITURA"] == selected_finitura]
+    if not df_desc.empty:
+        descrizione_finitura = df_desc["DESCRIZIONE FINITURA"].iloc[0]
+    else:
+        descrizione_finitura = "Descrizione non disponibile"
+
     st.markdown(f"Visualizzazione per finitura `{selected_finitura}, {descrizione_finitura}` e lunghezza `{selected_length} mm`")
 
     #st.dataframe(df_merged_filtered)
 
     # Info articolo e metriche
+    col0a, col0b,col0c = st.columns([1,1,1])
+    tab1, tab2 = st.tabs(["Distinta base","Simulazione preordine"])
+
     if not df_merged_filtered.empty:
-        col0a, col0b,col0c = st.columns([1,1,1])
         with col0a:
             st.subheader(df_merged_filtered["CONCAT_3"].iloc[0])
             st.markdown(f"{df_merged_filtered["ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE"].iloc[0]}")
@@ -131,7 +139,6 @@ if st.session_state["logged_in"]:
         with col0b:
             st.metric("Peso specifico gruppo", f"{df_merged_filtered['KG/ML'].iloc[0]:.2f} kg/ml")
 
-        tab1, tab2 = st.tabs(["Distinta base","Simulazione preordine"])
         with tab2:
             # Simulazione preordine alluminio
             st.subheader("Simulazione preordine alluminio")
