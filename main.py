@@ -107,52 +107,54 @@ if not df_merged_filtered.empty:
     with col0b:
         st.metric("Peso specifico gruppo", f"{df_merged_filtered['KG/ML'].iloc[0]:.2f} kg/ml")
 
-    # Simulazione preordine alluminio
-    st.subheader("Simulazione preordine alluminio")
-    col5, col6 = st.columns([3,1])
-    with col5:
-        Qta_ordine = st.number_input(
-            "Inserisci quantità di pezzi o metri lineari se si tratta di orizzontali.",
-            min_value=1,
-            value=1,
-            step=1
-            )
-    
-        # Ora moltiplichi il peso o le quantità dei materiali figli per questa quantità
-        def formula_ml(Qta_ordine, L_barra):
-            Val=(Qta_ordine/(L_barra/1000))*1.1
-            return Val
-        def formula_cad(Qta_ordine):
-            Val=(Qta_ordine)
-            return Val
-        df_simulazione=df_merged_filtered
-        df_simulazione["PESO_TOTALE_KG"] = df_simulazione["PESO_GREZZO_KG"] * Qta_ordine
-        df_simulazione = df_simulazione.rename(columns={
-            "ARTICOLO_FIGLIO": "ARTICOLO",
-            "COEFFICIENTE": "COEF",
-            "CODICE": "SEMILAV",
-            "PESO_GREZZO_KG": "KG_BARRA",
-            "PESO_TOTALE_KG": "KG_TOT",
-            "QTA_BARRE": "QTA_BARRE"
-            })
-        if df_simulazione["UNIT_ARTICOLO_PADRE"].iloc[0]=="ML":
-            df_simulazione["QTA_BARRE"] = formula_ml(Qta_ordine,df_simulazione["L_BARRA"])
-            st.markdown(f"Formula q.tà barre:`(Qta_ordine/(L_barra/1000))*1.1`")
-        elif df_simulazione["UNIT_ARTICOLO_PADRE"].iloc[0]=="N.":
-            st.markdown(f"Formula q.tà barre:`Qta_barre = Qta_ordine`")
-            df_simulazione["QTA_BARRE"] = formula_cad(Qta_ordine)
+    tab1, tab2 = st.tabs(["Distinta base","Simulazione preordine"])
+    with tab2:
+        # Simulazione preordine alluminio
+        st.subheader("Simulazione preordine alluminio")
+        col5, col6 = st.columns([3,1])
+        with col5:
+            Qta_ordine = st.number_input(
+                "Inserisci quantità di pezzi o metri lineari se si tratta di orizzontali.",
+                min_value=1,
+                value=1,
+                step=1
+                )
+        
+            # Ora moltiplichi il peso o le quantità dei materiali figli per questa quantità
+            def formula_ml(Qta_ordine, L_barra):
+                Val=(Qta_ordine/(L_barra/1000))*1.1
+                return Val
+            def formula_cad(Qta_ordine):
+                Val=(Qta_ordine)
+                return Val
+            df_simulazione=df_merged_filtered
+            df_simulazione["PESO_TOTALE_KG"] = df_simulazione["PESO_GREZZO_KG"] * Qta_ordine
+            df_simulazione = df_simulazione.rename(columns={
+                "ARTICOLO_FIGLIO": "ARTICOLO",
+                "COEFFICIENTE": "COEF",
+                "CODICE": "SEMILAV",
+                "PESO_GREZZO_KG": "KG_BARRA",
+                "PESO_TOTALE_KG": "KG_TOT",
+                "QTA_BARRE": "QTA_BARRE"
+                })
+            if df_simulazione["UNIT_ARTICOLO_PADRE"].iloc[0]=="ML":
+                df_simulazione["QTA_BARRE"] = formula_ml(Qta_ordine,df_simulazione["L_BARRA"])
+                st.markdown(f"Formula q.tà barre:`(Qta_ordine/(L_barra/1000))*1.1`")
+            elif df_simulazione["UNIT_ARTICOLO_PADRE"].iloc[0]=="N.":
+                st.markdown(f"Formula q.tà barre:`Qta_barre = Qta_ordine`")
+                df_simulazione["QTA_BARRE"] = formula_cad(Qta_ordine)
 
-        st.dataframe(df_simulazione[[
-            "ARTICOLO",
-            "COEF",
-            "GR/ML",
-            "L_BARRA" ,
-            "SEMILAV",
-            "KG_BARRA",
-            "KG_TOT",
-            "QTA_BARRE"
-        ]])
-            
+            st.dataframe(df_simulazione[[
+                "ARTICOLO",
+                "COEF",
+                "GR/ML",
+                "L_BARRA" ,
+                "SEMILAV",
+                "KG_BARRA",
+                "KG_TOT",
+                "QTA_BARRE"
+            ]])
+                
 else:
     st.warning("Nessun dato disponibile con i filtri selezionati.")
 
@@ -176,23 +178,23 @@ if not img_row.empty:
             st.warning("🖼️ Immagine non trovata nella cartella `images`")
 
 st.markdown("---")
+with tab1:
+    # Dataframe distinta base
+    if not df_merged_filtered.empty:
+        st.subheader("Distinta base componente")
+        df_merged_filtered = df_merged_filtered.rename(columns={'ARTICOLO_FIGLIO_COD_CONC': 'CODICE_FIGLIO'})
+        st.dataframe(df_merged_filtered[[
+            "CODICE_FIGLIO", "ARTICOLO_FIGLIO", "COEFFICIENTE","ARTICOLO_FIGLIO_DESCRIZIONE",
+            "CODICE", "CODICE_GREZZO",
+            "L_BARRA", "GR/ML", "PESO_GREZZO_KG"
+        ]], use_container_width=True)
 
-# --- Tabella componenti dettagliati ---
-if not df_merged_filtered.empty:
-    st.subheader("Distinta base componente")
-    df_merged_filtered = df_merged_filtered.rename(columns={'ARTICOLO_FIGLIO_COD_CONC': 'CODICE_FIGLIO'})
-    st.dataframe(df_merged_filtered[[
-        "CODICE_FIGLIO", "ARTICOLO_FIGLIO", "COEFFICIENTE","ARTICOLO_FIGLIO_DESCRIZIONE",
-        "CODICE", "CODICE_GREZZO",
-        "L_BARRA", "GR/ML", "PESO_GREZZO_KG"
-    ]], use_container_width=True)
+        # Download CSV
+        csv_df_merged_filtered = df_merged_filtered.to_csv(index=False)
+        st.sidebar.download_button("Distinta componente", data=csv_df_merged_filtered, file_name="distinta_filtrata.csv", mime="text/csv")
+        csv_df_merged_complete=df_merged_complete.to_csv(index=False)
+        st.sidebar.download_button("Distinta completa", data=csv_df_merged_complete, file_name="distinta_completa.csv", mime="text/csv")
 
-    # Download CSV
-    csv_df_merged_filtered = df_merged_filtered.to_csv(index=False)
-    st.sidebar.download_button("Distinta componente", data=csv_df_merged_filtered, file_name="distinta_filtrata.csv", mime="text/csv")
-    csv_df_merged_complete=df_merged_complete.to_csv(index=False)
-    st.sidebar.download_button("Distinta completa", data=csv_df_merged_complete, file_name="distinta_completa.csv", mime="text/csv")
-
-else:
-    st.error("Nessuna combinazione trovata per i filtri selezionati.")
-    st.info("Prova a cambiare lunghezza o finitura.")
+    else:
+        st.error("Nessuna combinazione trovata per i filtri selezionati.")
+        st.info("Prova a cambiare lunghezza o finitura.")
