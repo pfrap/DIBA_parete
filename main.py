@@ -3,6 +3,17 @@ import pandas as pd
 from PIL import Image
 import os
 
+credenziali = st.secrets["auth"]
+
+username = st.text_input("Username")
+password = st.text_input("Password", type="password")
+
+if st.button("Login"):
+    if username in credenziali and credenziali[username] == password:
+        st.success(f"Benvenuto, {username}!")
+    else:
+        st.error("Accesso negato")
+
 # --- Config layout ---
 st.set_page_config(layout="wide")
 
