@@ -94,11 +94,10 @@ st.markdown(f"Visualizzazione per finitura `{selected_finitura}, {descrizione_fi
 
 # Info articolo e metriche
 if not df_merged_filtered.empty:
+    st.subheader(df_merged_filtered["CONCAT_3"].iloc[0])
+    st.markdown(f"{df_merged_filtered["ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE"].iloc[0]}")
     col0a, col0b,col0c = st.columns([1,1,1])
     with col0a:
-        st.subheader(df_merged_filtered["CONCAT_3"].iloc[0])
-        st.markdown(f"{df_merged_filtered["ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE"].iloc[0]}")
-
         st.markdown(f"***Codice sistema:*** {df_merged_filtered["COD_SISTEMA"].iloc[0]} - {df_merged_filtered["SISTEMA"].iloc[0]}")
         st.markdown(f"***Categoria:*** {df_merged_filtered["C1"].iloc[0]} {df_merged_filtered["C2"].iloc[0]} - {df_merged_filtered["C2_DESCRIZIONE"].iloc[0]}")
         st.markdown(f"***Unit:*** {df_merged_filtered["UNIT_ARTICOLO_PADRE"].iloc[0]} ")
@@ -183,6 +182,12 @@ with tab1:
     if not df_merged_filtered.empty:
         st.subheader("Distinta base componente")
         df_merged_filtered = df_merged_filtered.rename(columns={'ARTICOLO_FIGLIO_COD_CONC': 'CODICE_FIGLIO'})
+
+        num_codici_univoci = df_filtered_distinta["ARTICOLO_FIGLIO_COD_CONC"].nunique()
+        num_codici_univoci_filtrati = df_merged_filtered["CODICE_FIGLIO"].nunique()
+
+        st.markdown(f"Codici presenti in distinta: **{num_codici_univoci_filtrati} di {num_codici_univoci}**")
+        
         st.dataframe(df_merged_filtered[[
             "CODICE_FIGLIO", "ARTICOLO_FIGLIO", "COEFFICIENTE","ARTICOLO_FIGLIO_DESCRIZIONE",
             "CODICE", "CODICE_GREZZO",
