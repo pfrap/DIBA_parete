@@ -31,3 +31,6 @@ Thumbs.db
 # Uploaded files or output
 uploads/
 output/
+
+.streamlit/secrets.toml
+

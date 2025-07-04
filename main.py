@@ -3,16 +3,19 @@ import pandas as pd
 from PIL import Image
 import os
 
+# Accedi ai dati salvati
 credenziali = st.secrets["auth"]
 
+# Login UI
 username = st.text_input("Username")
 password = st.text_input("Password", type="password")
 
 if st.button("Login"):
     if username in credenziali and credenziali[username] == password:
         st.success(f"Benvenuto, {username}!")
+        # contenuto riservato
     else:
-        st.error("Accesso negato")
+        st.error("Credenziali non valide")
 
 # --- Config layout ---
 st.set_page_config(layout="wide")
