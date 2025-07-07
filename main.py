@@ -2,67 +2,46 @@ import streamlit as st
 import pandas as pd
 from PIL import Image
 import os
+from moduli.login import login
 from moduli.sidebar_filtri import sidebar_filtri_distinta
-from moduli.formule_preordine import *
-
-
-# Accedi ai dati salvati
-credenziali = st.secrets["auth"]
-
-# Inizializza la variabile di sessione
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-
-# Login nella sidebar
-if not st.session_state["logged_in"]:
-    username = st.sidebar.text_input("Username")
-    password = st.sidebar.text_input("Password", type="password")
-    if st.sidebar.button("Login"):
-        if username in credenziali and credenziali[username] == password:
-            st.session_state["logged_in"] = True
-            st.sidebar.success(f"Benvenuto, {username}!")
-        else:
-            st.sidebar.error("Credenziali non valide")
-else:
-    if st.sidebar.button("🔒 Logout"):
-        st.session_state["logged_in"] = False
+from moduli.formule_preordine import formula_ml, formula_cad
 
 # Contenuto riservato visibile solo se loggato
+login()
 if st.session_state["logged_in"]:
+    # Contenuto riservato
 
-    # 🔒 CONTENUTO RISERVATO QUI
-    # --- Config layout ---
-    st.set_page_config(layout="wide",page_title="Progetto_pareti_2025")
+    # Caricamento dati
+    df_distinta = pd.read_excel("dati/Tabella_1.xlsx", dtype=str)
+    df_barre = pd.read_excel("dati/Tabella_2.xlsx", dtype=str)
+    
+    # Calcoli e formattazione
+    df_distinta["COEFFICIENTE"] = pd.to_numeric(df_distinta["COEFFICIENTE"], errors='coerce').fillna(0)
+    df_barre["GR/ML"] = pd.to_numeric(df_barre["GR/ML"], errors='coerce').fillna(0)
+    df_barre["L_BARRA"] = pd.to_numeric(df_barre["L_BARRA"], errors='coerce')
+    df_barre["KG/ML"] = df_barre["GR/ML"] / 1000
 
-    # --- Caricamento dati da file ---
-    @st.cache_data
-    def load_distinta():
-        return pd.read_excel("dati/Tabella_1.xlsx", dtype=str)
-
-    @st.cache_data
-    def load_barre():
-        df = pd.read_excel("dati/Tabella_2.xlsx", dtype=str)
-        df["L_BARRA"] = pd.to_numeric(df["L_BARRA"], errors="coerce")  # forza numerico, mette NaN se non valido
-        return df
-
-
-    # --- Caricamento dati ---
-    df_distinta = load_distinta()
-    df_barre = load_barre()
-
+    # Distinta merged per barre e diba AS400 (non viene più utilizzato in seguito)
     df_merged_complete = pd.merge(
         df_distinta,
         df_barre,
         how="left",
         on="ARTICOLO_FIGLIO"
     )
+    df_merged_complete["PESO_GREZZO_KG"] = (df_merged_complete["COEFFICIENTE"] * df_merged_complete["GR/ML"] * df_merged_complete["L_BARRA"]) / 1000000
+        
+    # Calcolo peso raggruppato per articolo
+    df_merged_complete_grouped_peso = df_merged_complete.groupby("CONCAT_3")[["PESO_GREZZO_KG", "KG/ML"]].sum()
 
-    # --- Nel main script dopo aver caricato df_distinta ---
+
+    # Calcoli per formazione listino
+    df_listino = df_merged_complete
+    df_listino["KG/ML"]=(df_listino["GR/ML"]/1000)
+
+    # Selezione multipla articoli in sidebar
     df_filtered_distinta, selected_padre, selected_macro, selected_cod_sistema, selected_c1, selected_c2 = sidebar_filtri_distinta(df_distinta)
 
-    # Da qui puoi proseguire usando df_filtered_distinta e i filtri per la visualizzazione e ulteriori operazioni
-
-    # --- Filtro barre ---
+    # Filtro barre disponibili e finiture
     articoli_filtrati = df_filtered_distinta["ARTICOLO_FIGLIO"].unique()
     df_barre_filtrato = df_barre[df_barre["ARTICOLO_FIGLIO"].isin(articoli_filtrati)]
 
@@ -73,7 +52,7 @@ if st.session_state["logged_in"]:
     finiture_disponibili = sorted(df_barre_lunghezza["FINITURA"].dropna().unique())
     selected_finitura = st.sidebar.selectbox("Finitura", finiture_disponibili)
 
-    # --- Merge tabelle --- ############ Questo è il df della distinta filtrata unito alla tabella delle barre disponibili in base al codice articolo #############
+    # Questo è il df della distinta filtrata unito alla tabella delle barre disponibili in base al codice articolo
     df_merged_filtered = pd.merge(
         df_filtered_distinta,
         df_barre,
@@ -81,7 +60,7 @@ if st.session_state["logged_in"]:
         on="ARTICOLO_FIGLIO"
     )
 
-    ############ Lo stesso dataframe viene poi filtrato in base a lunghezza barra e finitura, AND condition #############
+    # Lo stesso dataframe viene poi filtrato in base a lunghezza barra e finitura, AND condition
     df_merged_filtered = df_merged_filtered[
         (df_merged_filtered["L_BARRA"] == selected_length) &
         (df_merged_filtered["FINITURA"] == selected_finitura)
@@ -89,18 +68,18 @@ if st.session_state["logged_in"]:
 
     # Calcolo peso grezzo con conversioni numeriche corrette
     if not df_merged_filtered.empty:
-        df_merged_filtered["COEFFICIENTE"] = pd.to_numeric(df_merged_filtered["COEFFICIENTE"], errors='coerce').fillna(0)
-        df_merged_filtered["GR/ML"] = pd.to_numeric(df_merged_filtered["GR/ML"], errors='coerce').fillna(0)
-        df_merged_filtered["L_BARRA"] = pd.to_numeric(df_merged_filtered["L_BARRA"], errors='coerce').fillna(0)
 
         df_merged_filtered["PESO_GREZZO_KG"] = (df_merged_filtered["COEFFICIENTE"] * df_merged_filtered["GR/ML"] * df_merged_filtered["L_BARRA"]) / 1000000
-        df_merged_filtered["KG/ML"] = df_merged_filtered["GR/ML"] / 1000
         
         # Calcolo peso raggruppato per articolo
         df_grouped_peso_articoli = df_merged_filtered.groupby("CONCAT_3")[["PESO_GREZZO_KG", "KG/ML"]].sum()
 
     # --- Layout ---
+    # --- Config layout ---
+    st.set_page_config(layout="wide",page_title="Progetto_pareti_2025")
+
     st.title("Distinta base parete Unifor")
+
     #descrizione_finitura = df_barre[df_barre["FINITURA"] == selected_finitura]["DESCRIZIONE FINITURA"].iloc[0]
     df_desc = df_barre[df_barre["FINITURA"] == selected_finitura]
     if not df_desc.empty:
@@ -110,16 +89,15 @@ if st.session_state["logged_in"]:
 
     st.markdown(f"Visualizzazione per finitura `{selected_finitura}, {descrizione_finitura}` e lunghezza `{selected_length} mm`")
 
-    #st.dataframe(df_merged_filtered)
-
     # Info articolo e metriche
     if not df_merged_filtered.empty:
             st.subheader(df_merged_filtered["CONCAT_3"].iloc[0])
             st.markdown(f"{df_merged_filtered["ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE"].iloc[0]}")
-    col0a, col0b,col0c = st.columns([1,1,1])
-    tab1, tab2 = st.tabs(["Distinta base","Simulazione preordine"])
-    container_articolo = st.container()
-    container_body= st.container(border=True)
+
+            col0a, col0b,col0c = st.columns([1,1,1])
+            tab1, tab2, tab3 = st.tabs(["Distinta base","Simulazione preordine", "Formazione listino"])
+            container_articolo = st.container()
+            container_body= st.container(border=True)
 
     if not df_merged_filtered.empty:
         with col0a:
@@ -194,8 +172,6 @@ if st.session_state["logged_in"]:
         else:
             with col0c:
                 st.warning("🖼️ Immagine non trovata nella cartella `images`")
-
-    st.markdown("---")
     with tab1:
         # Dataframe distinta base
         if not df_merged_filtered.empty:
@@ -213,12 +189,19 @@ if st.session_state["logged_in"]:
                 "L_BARRA", "PESO_LORDO","GR/ML", "PESO_GREZZO_KG"
             ]], use_container_width=True)
 
-            # Download CSV
-            csv_df_merged_filtered = df_merged_filtered.to_csv(index=False)
-            st.sidebar.download_button("Distinta componente", data=csv_df_merged_filtered, file_name="distinta_filtrata.csv", mime="text/csv")
-            csv_df_merged_complete=df_merged_complete.to_csv(index=False)
-            st.sidebar.download_button("Distinta completa", data=csv_df_merged_complete, file_name="distinta_completa.csv", mime="text/csv")
-
         else:
             st.error("Nessuna combinazione trovata per i filtri selezionati.")
             st.info("Prova a cambiare lunghezza o finitura.")
+
+    with tab3:
+            # Formazione listino
+            if not df_merged_filtered.empty:
+                st.subheader("Formazione listino")
+        
+                st.dataframe(df_listino.columns)
+
+    # Download CSV
+    csv_df_merged_filtered = df_merged_filtered.to_csv(index=False)
+    st.sidebar.download_button("Distinta componente", data=csv_df_merged_filtered, file_name="distinta_filtrata.csv", mime="text/csv")
+    csv_df_merged_complete=df_merged_complete.to_csv(index=False)
+    st.sidebar.download_button("Distinta completa", data=csv_df_merged_complete, file_name="distinta_completa.csv", mime="text/csv")

@@ -96,7 +96,7 @@ def sidebar_filtri_distinta(df_distinta):
         # Filtro 3: C1_DESCRIZIONE
         c1_opzioni = sorted(filtered_cod["C1_DESCRIZIONE"].dropna().unique())
         selected_c1 = st.sidebar.selectbox(
-            "C1_DESCRIZIONE",
+            "C1 Descrizione",
             c1_opzioni,
             index=c1_opzioni.index(default_c1) if default_c1 in c1_opzioni else 0
         )
@@ -105,7 +105,7 @@ def sidebar_filtri_distinta(df_distinta):
         # Filtro 4: C2_DESCRIZIONE
         c2_opzioni = sorted(filtered_c1["C2_DESCRIZIONE"].dropna().unique())
         selected_c2 = st.sidebar.selectbox(
-            "C2_DESCRIZIONE",
+            "C2 Descrizione",
             c2_opzioni,
             index=c2_opzioni.index(default_c2) if default_c2 in c2_opzioni else 0
         )
