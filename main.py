@@ -75,6 +75,7 @@ if st.session_state["logged_in"]:
                 "C2",
                 "C2_DESCRIZIONE",
                 "CONCAT_3",
+                "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE",
                 "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE_BREVE",
                 "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE_EN_BREVE"
             ]
