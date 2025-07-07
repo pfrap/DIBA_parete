@@ -237,6 +237,9 @@ if st.session_state["logged_in"]:
     #st.dataframe(df_merged_filtered)
 
     # Info articolo e metriche
+    if not df_merged_filtered.empty:
+            st.subheader(df_merged_filtered["CONCAT_3"].iloc[0])
+            st.markdown(f"{df_merged_filtered["ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE"].iloc[0]}")
     col0a, col0b,col0c = st.columns([1,1,1])
     tab1, tab2 = st.tabs(["Distinta base","Simulazione preordine"])
     container_articolo = st.container()
@@ -244,8 +247,6 @@ if st.session_state["logged_in"]:
 
     if not df_merged_filtered.empty:
         with col0a:
-            st.subheader(df_merged_filtered["CONCAT_3"].iloc[0])
-            st.markdown(f"{df_merged_filtered["ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE"].iloc[0]}")
             st.markdown(f"***Codice sistema:*** {df_merged_filtered["COD_SISTEMA"].iloc[0]} - {df_merged_filtered["SISTEMA"].iloc[0]}")
             st.markdown(f"***Categoria:*** {df_merged_filtered["C1"].iloc[0]} {df_merged_filtered["C2"].iloc[0]} - {df_merged_filtered["C2_DESCRIZIONE"].iloc[0]}")
             st.markdown(f"***Unit:*** {df_merged_filtered["UNIT_ARTICOLO_PADRE"].iloc[0]} ")
