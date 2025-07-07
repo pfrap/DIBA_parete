@@ -171,9 +171,14 @@ if st.session_state["logged_in"]:
             df_filtered_distinta = df_distinta[df_distinta["CONCAT_3"] == selected_padre_input]
             selected_padre = selected_padre_input
         else:
-            codici_possibili = sorted(filtered_c2["CONCAT_3"].dropna().unique())
+            if 'filtered_c2' in locals():
+                codici_possibili = sorted(filtered_c2["CONCAT_3"].dropna().unique())
+            else:
+                codici_possibili = sorted(df_distinta["CONCAT_3"].dropna().unique())  # fallback se ricerca libera non ha dato nulla
+
             selected_padre = st.sidebar.selectbox("Codice articolo", codici_possibili)
             df_filtered_distinta = df_distinta[df_distinta["CONCAT_3"] == selected_padre]
+
 
         return df_filtered_distinta, selected_padre, selected_macro, selected_cod_sistema, selected_c1, selected_c2
 
