@@ -29,7 +29,9 @@ if st.session_state["logged_in"]:
 
     # 🔒 CONTENUTO RISERVATO QUI
     # --- Config layout ---
-    st.set_page_config(layout="wide")
+    st.set_page_config(layout="wide",
+                       page_title="Progetto_pareti_2025",
+                       )
 
     # --- Caricamento dati da file ---
     @st.cache_data
