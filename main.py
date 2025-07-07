@@ -182,7 +182,8 @@ if st.session_state["logged_in"]:
         with col0b:
             st.metric("Peso barre grezze per gruppo", f"{df_merged_filtered['PESO_GREZZO_KG'].iloc[0]:.2f} kg")
         with col0b:
-            st.metric("Peso specifico gruppo", f"{df_merged_filtered['KG/ML'].iloc[0]:.2f} kg/ml")
+            if df_merged_filtered["C1"].iloc[0]!="P":
+                st.metric("Peso specifico gruppo", f"{df_merged_filtered['KG/ML'].iloc[0]:.2f} kg/ml")
 
         with tab2:
             # Simulazione preordine alluminio
