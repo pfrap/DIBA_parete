@@ -28,9 +28,9 @@ if st.session_state["logged_in"]:
         how="left",
         on="ARTICOLO_FIGLIO"
     )
-    df_merged_complete["PESO_GREZZO_KG"] = (df_merged_complete["COEFFICIENTE"] * df_merged_complete["GR/ML"] * df_merged_complete["L_BARRA"]) / 1000000
-        
+
     # Calcolo peso raggruppato per articolo
+    df_merged_complete["PESO_GREZZO_KG"] = (df_merged_complete["COEFFICIENTE"] * df_merged_complete["GR/ML"] * df_merged_complete["L_BARRA"]) / 1000000
     df_merged_complete_grouped_peso = df_merged_complete.groupby("CONCAT_3")[["PESO_GREZZO_KG", "KG/ML"]].sum()
 
 
@@ -197,8 +197,6 @@ if st.session_state["logged_in"]:
             # Formazione listino
             if not df_merged_filtered.empty:
                 st.subheader("Formazione listino")
-        
-                st.dataframe(df_listino.columns)
 
     # Download CSV
     csv_df_merged_filtered = df_merged_filtered.to_csv(index=False)
