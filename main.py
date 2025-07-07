@@ -32,9 +32,7 @@ if st.session_state["logged_in"]:
 
     # 🔒 CONTENUTO RISERVATO QUI
     # --- Config layout ---
-    st.set_page_config(layout="wide",
-                       page_title="Progetto_pareti_2025",
-                       )
+    st.set_page_config(layout="wide",page_title="Progetto_pareti_2025")
 
     # --- Caricamento dati da file ---
     @st.cache_data
@@ -161,8 +159,8 @@ if st.session_state["logged_in"]:
                     df_simulazione["QTA_BARRE"] = formula_ml(Qta_ordine,df_simulazione["L_BARRA"])
                     st.markdown(f"Formula q.tà barre:`(Qta_ordine/(L_barra/1000))*1.1`")
                 elif df_simulazione["UNIT_ARTICOLO_PADRE"].iloc[0]=="N.":
-                    st.markdown(f"Formula q.tà barre:`Qta_barre = Qta_ordine`")
-                    df_simulazione["QTA_BARRE"] = formula_cad(Qta_ordine)
+                    st.markdown(f"Formula q.tà barre:`Qta_barre = Qta_ordine*Coefficiente`")
+                    df_simulazione["QTA_BARRE"] = formula_cad(Qta_ordine,df_simulazione["COEF"])
 
                 st.dataframe(df_simulazione[[
                     "ARTICOLO",
