@@ -96,7 +96,7 @@ if st.session_state["logged_in"]:
             if not matching_rows.empty:
                 # Crea opzioni leggibili come: "CODICE - Descrizione"
                 matching_rows["LABEL"] = matching_rows.apply(
-                    lambda x: f"{x['CONCAT_3']} - {x['ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE']}", axis=1
+                    lambda x: f"{x['CONCAT_3']} - {x['ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE_BREVE']}", axis=1
                 )
                 # Tieni solo i primi 10 risultati unici
                 dropdown_options = matching_rows[["CONCAT_3", "LABEL"]].drop_duplicates().head(10)
@@ -234,6 +234,8 @@ if st.session_state["logged_in"]:
     # Info articolo e metriche
     col0a, col0b,col0c = st.columns([1,1,1])
     tab1, tab2 = st.tabs(["Distinta base","Simulazione preordine"])
+    container_articolo = st.container()
+    container_body= st.container(border=True)
 
     if not df_merged_filtered.empty:
         with col0a:
@@ -294,7 +296,7 @@ if st.session_state["logged_in"]:
                     "KG_TOT",
                     "QTA_BARRE"
                 ]])
-                    
+                
     else:
         st.warning("Nessun dato disponibile con i filtri selezionati.")
 
