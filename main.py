@@ -88,16 +88,13 @@ if st.session_state["logged_in"]:
         descrizione_finitura = "Descrizione non disponibile"
 
     st.markdown(f"Visualizzazione per finitura `{selected_finitura}, {descrizione_finitura}` e lunghezza `{selected_length} mm`")
-
-    # Info articolo e metriche
     if not df_merged_filtered.empty:
             st.subheader(df_merged_filtered["CONCAT_3"].iloc[0])
             st.markdown(f"{df_merged_filtered["ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE"].iloc[0]}")
-
-            col0a, col0b,col0c = st.columns([1,1,1])
-            tab1, tab2, tab3 = st.tabs(["Distinta base","Simulazione preordine", "Formazione listino"])
-            container_articolo = st.container()
-            container_body= st.container(border=True)
+    col0a, col0b,col0c = st.columns([1,1,1])
+    tab1, tab2, tab3 = st.tabs(["Distinta base","Simulazione preordine", "Formazione listino"])
+    container_articolo = st.container()
+    container_body= st.container(border=True)
 
     if not df_merged_filtered.empty:
         with col0a:
