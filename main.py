@@ -5,6 +5,7 @@ import os
 from moduli.login import login
 from moduli.sidebar_filtri import sidebar_filtri_distinta
 from moduli.formule_preordine import formula_ml, formula_cad
+from moduli.dataframe_listino import dataframe_listino
 
 # Contenuto riservato visibile solo se loggato
 login()
@@ -14,12 +15,20 @@ if st.session_state["logged_in"]:
     # Caricamento dati
     df_distinta = pd.read_excel("dati/Tabella_1.xlsx", dtype=str)
     df_barre = pd.read_excel("dati/Tabella_2.xlsx", dtype=str)
-    
+    df_profili = pd.read_excel("dati/Profili_r00.xlsx", dtype=str)
+    df_costi_pareti = pd.read_excel("dati/Costi_pareti_r00.xlsx", dtype=str)
+
+
     # Calcoli e formattazione
     df_distinta["COEFFICIENTE"] = pd.to_numeric(df_distinta["COEFFICIENTE"], errors='coerce').fillna(0)
     df_barre["GR/ML"] = pd.to_numeric(df_barre["GR/ML"], errors='coerce').fillna(0)
     df_barre["L_BARRA"] = pd.to_numeric(df_barre["L_BARRA"], errors='coerce')
     df_barre["KG/ML"] = df_barre["GR/ML"] / 1000
+    df_profili["PESO_(gr/ml)"] = pd.to_numeric(df_profili["PESO_(gr/ml)"], errors="coerce")
+    df_profili["KG/ML"] = df_profili["PESO_(gr/ml)"] / 1000
+    df_costi_pareti["COSTO_LAV"] = pd.to_numeric(df_costi_pareti["COSTO_LAV"], errors="coerce")
+    df_costi_pareti["ALTRI_COSTI"] = pd.to_numeric(df_costi_pareti["ALTRI_COSTI"], errors="coerce")
+
 
     # Distinta merged per barre e diba AS400 (non viene più utilizzato in seguito)
     df_merged_complete = pd.merge(
@@ -28,15 +37,11 @@ if st.session_state["logged_in"]:
         how="left",
         on="ARTICOLO_FIGLIO"
     )
-
-    # Calcolo peso raggruppato per articolo
     df_merged_complete["PESO_GREZZO_KG"] = (df_merged_complete["COEFFICIENTE"] * df_merged_complete["GR/ML"] * df_merged_complete["L_BARRA"]) / 1000000
     df_merged_complete_grouped_peso = df_merged_complete.groupby("CONCAT_3")[["PESO_GREZZO_KG", "KG/ML"]].sum()
 
-
-    # Calcoli per formazione listino
-    df_listino = df_merged_complete
-    df_listino["KG/ML"]=(df_listino["GR/ML"]/1000)
+    # Creazione dataframe listino
+    df_listino, df_listino_grouped,df_costi_pareti,riferimento_barra_porte,riferimento_barra_ml,costo_alluminio,costo_finitura=dataframe_listino(df_distinta, df_profili,df_costi_pareti)
 
     # Selezione multipla articoli in sidebar
     df_filtered_distinta, selected_padre, selected_macro, selected_cod_sistema, selected_c1, selected_c2 = sidebar_filtri_distinta(df_distinta)
@@ -44,7 +49,7 @@ if st.session_state["logged_in"]:
     # Filtro barre disponibili e finiture
     articoli_filtrati = df_filtered_distinta["ARTICOLO_FIGLIO"].unique()
     df_barre_filtrato = df_barre[df_barre["ARTICOLO_FIGLIO"].isin(articoli_filtrati)]
-
+    
     lunghezze_disponibili = sorted(df_barre_filtrato["L_BARRA"].dropna().unique())
     selected_length = st.sidebar.selectbox("Lunghezza barra", lunghezze_disponibili)
 
@@ -68,9 +73,7 @@ if st.session_state["logged_in"]:
 
     # Calcolo peso grezzo con conversioni numeriche corrette
     if not df_merged_filtered.empty:
-
         df_merged_filtered["PESO_GREZZO_KG"] = (df_merged_filtered["COEFFICIENTE"] * df_merged_filtered["GR/ML"] * df_merged_filtered["L_BARRA"]) / 1000000
-        
         # Calcolo peso raggruppato per articolo
         df_grouped_peso_articoli = df_merged_filtered.groupby("CONCAT_3")[["PESO_GREZZO_KG", "KG/ML"]].sum()
 
@@ -80,18 +83,16 @@ if st.session_state["logged_in"]:
 
     st.title("Distinta base parete Unifor")
 
-    #descrizione_finitura = df_barre[df_barre["FINITURA"] == selected_finitura]["DESCRIZIONE FINITURA"].iloc[0]
     df_desc = df_barre[df_barre["FINITURA"] == selected_finitura]
     if not df_desc.empty:
         descrizione_finitura = df_desc["DESCRIZIONE FINITURA"].iloc[0]
     else:
         descrizione_finitura = "Descrizione non disponibile"
 
-    st.markdown(f"Visualizzazione per finitura `{selected_finitura}, {descrizione_finitura}` e lunghezza `{selected_length} mm`")
     if not df_merged_filtered.empty:
             st.subheader(df_merged_filtered["CONCAT_3"].iloc[0])
             st.markdown(f"{df_merged_filtered["ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE"].iloc[0]}")
-    col0a, col0b,col0c = st.columns([1,1,1])
+    col0a, col0b,col0c = st.columns([2,1,1])
     tab1, tab2, tab3 = st.tabs(["Distinta base","Simulazione preordine", "Formazione listino"])
     container_articolo = st.container()
     container_body= st.container(border=True)
@@ -101,15 +102,26 @@ if st.session_state["logged_in"]:
             st.markdown(f"***Codice sistema:*** {df_merged_filtered["COD_SISTEMA"].iloc[0]} - {df_merged_filtered["SISTEMA"].iloc[0]}")
             st.markdown(f"***Categoria:*** {df_merged_filtered["C1"].iloc[0]} {df_merged_filtered["C2"].iloc[0]} - {df_merged_filtered["C2_DESCRIZIONE"].iloc[0]}")
             st.markdown(f"***Unit:*** {df_merged_filtered["UNIT_ARTICOLO_PADRE"].iloc[0]} ")
+            st.metric("Prezzo listino", f"{df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre]['LISTINO'].iloc[0]:.2f} €/unit")
+
         with col0b:
-            st.metric("Peso barre grezze per gruppo", f"{df_grouped_peso_articoli['PESO_GREZZO_KG'].iloc[0]:.2f} kg")
-        with col0b:
-            if df_merged_filtered["C1"].iloc[0]!="P":
-                st.metric("Peso specifico gruppo", f"{df_grouped_peso_articoli['KG/ML'].iloc[0]:.2f} kg/ml")
+            if df_merged_filtered["C1"].iloc[0]=="P":
+                st.metric("Impegno alluminio", f"{df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre]['IMPEGNO_ALLUMINIO'].iloc[0]:.2f} kg/cad")
+            elif df_merged_filtered["C1"].iloc[0]=="V":
+                st.metric("Impegno alluminio", f"{df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre]['IMPEGNO_ALLUMINIO'].iloc[0]:.2f} kg/cad")
+                st.metric("Peso specifico gruppo", f"{df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre]['KG/ML'].iloc[0]:.2f} kg/ml")
+            elif (df_merged_filtered["C1"].iloc[0]=="H") & ((df_merged_filtered["C2"].iloc[0]=="AP")|(df_merged_filtered["C2"].iloc[0]=="IP")):
+                st.metric("Impegno alluminio", f"{df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre]['IMPEGNO_ALLUMINIO'].iloc[0]:.2f} kg/cad")
+                st.metric("Peso specifico gruppo", f"{df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre]['KG/ML'].iloc[0]:.2f} kg/ml")
+            else:
+                st.metric("Peso specifico gruppo", f"{df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre]['KG/ML'].iloc[0]:.2f} kg/ml")
+
 
         with tab2:
             # Simulazione preordine alluminio
             st.subheader("Simulazione preordine alluminio")
+            st.markdown(f"Visualizzazione per finitura `{selected_finitura}, {descrizione_finitura}` e lunghezza `{selected_length} mm`")
+
             col5, col6 = st.columns([3,1])
             with col5:
                 Qta_ordine = st.number_input(
@@ -170,10 +182,14 @@ if st.session_state["logged_in"]:
             with col0c:
                 st.warning("🖼️ Immagine non trovata nella cartella `images`")
     with tab1:
+        dibacol1, dibacol2 = st.columns([3,1])
         # Dataframe distinta base
         if not df_merged_filtered.empty:
-            st.subheader("Distinta base componente")
-            df_merged_filtered = df_merged_filtered.rename(columns={'ARTICOLO_FIGLIO_COD_CONC': 'CODICE_FIGLIO'})
+            with dibacol1:
+                st.subheader("Distinta base componente")
+                st.markdown(f"Visualizzazione per finitura `{selected_finitura}, {descrizione_finitura}` e lunghezza `{selected_length} mm`")
+
+                df_merged_filtered = df_merged_filtered.rename(columns={'ARTICOLO_FIGLIO_COD_CONC': 'CODICE_FIGLIO'})
 
             num_codici_univoci = df_filtered_distinta["ARTICOLO_FIGLIO_COD_CONC"].nunique()
             num_codici_univoci_filtrati = df_merged_filtered["CODICE_FIGLIO"].nunique()
@@ -186,17 +202,24 @@ if st.session_state["logged_in"]:
                 "L_BARRA", "PESO_LORDO","GR/ML", "PESO_GREZZO_KG"
             ]], use_container_width=True)
 
+            with dibacol2:
+                            csv_df_merged_filtered = df_merged_filtered.to_csv(index=False)
+                            st.download_button("Scarica csv distinta componente", data=csv_df_merged_filtered, file_name="distinta_filtrata.csv", mime="text/csv")
         else:
             st.error("Nessuna combinazione trovata per i filtri selezionati.")
             st.info("Prova a cambiare lunghezza o finitura.")
-
+        
     with tab3:
             # Formazione listino
             if not df_merged_filtered.empty:
                 st.subheader("Formazione listino")
+                st.markdown(f"Costo alluminio: `{costo_alluminio} €/kg` Costo finitura: `{costo_finitura} €/ml/profilo`")
+                if df_merged_filtered["C1"].iloc[0]=="P":
+                    st.markdown(f"L. barra di riferimento per calcolo impegno alluminio: `{riferimento_barra_porte}`")
 
-    # Download CSV
-    csv_df_merged_filtered = df_merged_filtered.to_csv(index=False)
-    st.sidebar.download_button("Distinta componente", data=csv_df_merged_filtered, file_name="distinta_filtrata.csv", mime="text/csv")
+                st.dataframe(df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre])
+                st.dataframe(df_listino[df_listino["CONCAT_3"]==selected_padre])
+    
+    # Download CSV distinta completa
     csv_df_merged_complete=df_merged_complete.to_csv(index=False)
     st.sidebar.download_button("Distinta completa", data=csv_df_merged_complete, file_name="distinta_completa.csv", mime="text/csv")
