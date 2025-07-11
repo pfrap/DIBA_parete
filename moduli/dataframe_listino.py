@@ -111,6 +111,57 @@ def dataframe_listino(df_distinta, df_profili, df_costi_pareti):
     df_listino_grouped["COSTO_TOT"] = df_listino_grouped[columns_to_sum].fillna(0).sum(axis=1)
 
     df_listino_grouped["LISTINO"]= df_listino_grouped["COSTO_TOT"]*k_listino
+    
+    # Seleziono e riduco df_distinta alle colonne di interesse (una riga per ogni codice articolo)
+    colonne_interessanti = [
+        "MACRO_SISTEMA",
+        "COD_SISTEMA",
+        "SISTEMA",
+        "C1_DESCRIZIONE",
+        "C2_DESCRIZIONE",
+        "CONCAT_3",
+        "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE_EN",
+        "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE",
+        "IMMAGINE_NOME_FILE",
+        "UNIT_ARTICOLO_PADRE"
+    ]
 
+    df_distinta_ridotto = df_distinta[colonne_interessanti].drop_duplicates(subset=["CONCAT_3"])
 
-    return df_listino, df_listino_grouped, df_costi_pareti,riferimento_barra_porte,riferimento_barra_ml,costo_alluminio,costo_finitura
+    # Merge left mantenendo tutte le righe di df_listino_grouped
+    df_listino_grouped = df_listino_grouped.merge(
+        df_distinta_ridotto,
+        on="CONCAT_3",
+        how="left"
+    )
+    # Riordino le colonne come richiesto
+    ordine_colonne = [
+        "MACRO_SISTEMA",
+        "COD_SISTEMA",
+        "SISTEMA",
+        "CONCAT_3",
+        "C1",
+        "C1_DESCRIZIONE",
+        "C2",
+        "C2_DESCRIZIONE",
+        "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE_EN",
+        "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE",
+        "UNIT_ARTICOLO_PADRE",
+        "KG/ML",
+        "IMPEGNO_ALLUMINIO",
+        "COSTO_ALLUMINIO",
+        "COSTO_FINITURA",
+        "COSTO_GUAR_FER",
+        "COSTO_IMBALLO",
+        "COSTO_LAV",
+        "ALTRI_COSTI",
+        "COSTO_TOT",
+        "LISTINO",
+        "IMMAGINE_NOME_FILE"
+    ]
+
+    # Mantieni solo le colonne che esistono nel df
+    colonne_presenti = [col for col in ordine_colonne if col in df_listino_grouped.columns]
+    df_listino_grouped = df_listino_grouped[colonne_presenti]
+
+    return df_listino, df_listino_grouped, df_costi_pareti, riferimento_barra_porte, riferimento_barra_ml, costo_alluminio, costo_finitura

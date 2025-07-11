@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 def sidebar_filtri_distinta(df_distinta):
-    st.sidebar.header("🎛️ Filtri distinta")
+    st.sidebar.header("Filtri distinta")
 
     # --- Ricerca diretta avanzata ---
     search_text = st.sidebar.text_input("🔍 Ricerca libera (codice, descrizione, categoria...)")
