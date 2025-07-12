@@ -164,4 +164,6 @@ def dataframe_listino(df_distinta, df_profili, df_costi_pareti):
     colonne_presenti = [col for col in ordine_colonne if col in df_listino_grouped.columns]
     df_listino_grouped = df_listino_grouped[colonne_presenti]
 
+    
+
     return df_listino, df_listino_grouped, df_costi_pareti, riferimento_barra_porte, riferimento_barra_ml, costo_alluminio, costo_finitura

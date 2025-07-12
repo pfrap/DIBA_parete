@@ -40,6 +40,8 @@ def show():
 
     # Creazione dataframe listino
     df_listino, df_listino_grouped,df_costi_pareti,riferimento_barra_porte,riferimento_barra_ml,costo_alluminio,costo_finitura=dataframe_listino(df_distinta, df_profili,df_costi_pareti)
+    
+    df_listino_grouped["LISTINO"] = pd.to_numeric(df_listino_grouped["LISTINO"], errors="coerce")
     st.session_state["df_listino_grouped"] = df_listino_grouped
 
     # Selezione multipla articoli in sidebar
@@ -59,7 +61,25 @@ def show():
 
     # --- Layout ---
     if not df_merged_filtered.empty:
-    
+        #Diz per visualizzazione in rinomina non modificante il dataframe, utilizzato in seguito
+        colrename_diz={"MACRO_SISTEMA": "FAMIGLIA",
+        "CONCAT_3": "ARTICOLO",
+        "C1": "CATEGORIA",
+        "C1_DESCRIZIONE": "CAT_DESCRIZIONE",
+        "C2": "SOTTOCATEGORIA",
+        "C2_DESCRIZIONE": "SUBCAT_DESCRIZIONE",
+        "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE_EN": "DESCRIZIONE EN",
+        "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE": "DESCRIZIONE",
+        "UNIT_ARTICOLO_PADRE": "UNIT",
+        "ARTICOLO_FIGLIO_TIPO": "TIPO_FIGLIO",
+        "ARTICOLO_FIGLIO_COD_CONC": "CODICE_ARTICOLO_FIGLIO",
+        "COEFFICIENTE": "COEF",
+        "CODICE": "SEMILAV",
+        "PESO_GREZZO_KG": "KG_BARRA",
+        "PESO_TOTALE_KG": "KG_TOT",
+        }
+        st.session_state["colrename_diz"] = colrename_diz
+
         st.subheader(df_merged_filtered["CONCAT_3"].iloc[0])
         st.markdown(f"{df_merged_filtered["ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE"].iloc[0]}")
         col0a, col0b,col0c = st.columns([2,1,1])
@@ -128,8 +148,8 @@ def show():
                 ]
             with dibacolsel_1:
                 st.subheader(f"Visualizzazione per:")
-                st.markdown(f"Finitura `{selected_finitura}, {descrizione_finitura}`")
                 st.markdown(f"Lunghezza barra `{selected_length} mm`")
+                st.markdown(f"Finitura `{selected_finitura}, {descrizione_finitura}`")
 
                 # Calcolo peso grezzo con conversioni numeriche corrette
                 if not df_merged_filtered_diba.empty:
@@ -184,46 +204,56 @@ def show():
                         # Ora moltiplichi il peso o le quantità dei materiali figli per questa quantità
                         df_simulazione=df_merged_filtered_diba
                         df_simulazione["PESO_TOTALE_KG"] = df_simulazione["PESO_GREZZO_KG"] * Qta_ordine
-                        df_simulazione = df_simulazione.rename(columns={
-                            "ARTICOLO_FIGLIO": "ARTICOLO",
-                            "COEFFICIENTE": "COEF",
-                            "CODICE": "SEMILAV",
-                            "PESO_GREZZO_KG": "KG_BARRA",
-                            "PESO_TOTALE_KG": "KG_TOT",
-                            "QTA_BARRE": "QTA_BARRE"
-                            })
+                    
                         if df_simulazione["UNIT_ARTICOLO_PADRE"].iloc[0]=="ML":
                             df_simulazione["QTA_BARRE"] = formula_ml(Qta_ordine,df_simulazione["L_BARRA"])
                             st.markdown(f"Formula q.tà barre:`(Qta_ordine/(L_barra/1000))*1.1`")
                         elif df_simulazione["UNIT_ARTICOLO_PADRE"].iloc[0]=="N.":
                             st.markdown(f"Formula q.tà barre:`Qta_barre = Qta_ordine*Coefficiente`")
-                            df_simulazione["QTA_BARRE"] = formula_cad(Qta_ordine,df_simulazione["COEF"])
+                            df_simulazione["QTA_BARRE"] = formula_cad(Qta_ordine,df_simulazione["COEFFICIENTE"])
 
                         st.dataframe(df_simulazione[[
-                            "ARTICOLO",
-                            "COEF",
+                            "ARTICOLO_FIGLIO",
+                            "COEFFICIENTE",
                             "GR/ML",
                             "L_BARRA" ,
-                            "SEMILAV",
-                            "KG_BARRA",
-                            "KG_TOT",
+                            "CODICE",
+                            "PESO_GREZZO_KG",
+                            "PESO_TOTALE_KG",
                             "QTA_BARRE"
-                        ]])                
+                        ]].rename(columns=colrename_diz))                
     else:
         st.warning("Nessun dato disponibile con i filtri selezionati.")
 
     with tab_listino:
             # Formazione listino
             if not df_merged_filtered.empty:
-                st.write(df_listino_grouped.columns.tolist())
-
                 st.subheader("Formazione listino")
                 st.markdown(f"Costo alluminio: `{costo_alluminio} €/kg` Costo finitura: `{costo_finitura} €/ml/profilo`")
                 if df_merged_filtered["C1"].iloc[0]=="P":
                     st.markdown(f"L. barra di riferimento per calcolo impegno alluminio: `{riferimento_barra_porte}`")
-
-                st.dataframe(df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre])
-                st.dataframe(df_listino[df_listino["CONCAT_3"]==selected_padre])
+                lista_col_listino=["CONCAT_3",
+                                   "ARTICOLO_FIGLIO_TIPO",
+                                   "ARTICOLO_FIGLIO_COD_CONC",
+                                   "ARTICOLO_FIGLIO",
+                                   "COEFFICIENTE",
+                                   "KG/ML",
+                                   "IMPEGNO_ALLUMINIO",
+                                   "COSTO_ALLUMINIO",
+                                   "COSTO_FINITURA"]
+                lista_col_listino_grouped=["CONCAT_3",
+                                   "UNIT_ARTICOLO_PADRE",
+                                   "IMPEGNO_ALLUMINIO",
+                                   "COSTO_ALLUMINIO",
+                                   "COSTO_FINITURA",
+                                   "COSTO_GUAR_FER",
+                                   "COSTO_IMBALLO",
+                                   "COSTO_LAV",
+                                   "ALTRI_COSTI",
+                                   "COSTO_TOT",
+                                   "LISTINO"]
+                st.dataframe(df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre][lista_col_listino_grouped].rename(columns=colrename_diz))
+                st.dataframe(df_listino[df_listino["CONCAT_3"]==selected_padre][lista_col_listino].rename(columns=colrename_diz))
     
     # Download CSV distinta completa
     csv_df_merged_complete=df_merged_complete.to_csv(index=False)
