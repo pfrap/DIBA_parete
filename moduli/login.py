@@ -7,6 +7,8 @@ def login():
         st.session_state["logged_in"] = False
 
     if not st.session_state["logged_in"]:
+        st.title("Area tecnica pareti Unifor")
+        st.markdown("Inserisci le tue credenziali")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         if st.button("Login"):
