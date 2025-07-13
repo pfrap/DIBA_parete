@@ -27,6 +27,22 @@ def filtro_sidebar_listino(df_listino: pd.DataFrame):
         if scelta != "Tutti":
             df_filtrato = df_filtrato[df_filtrato[col] == scelta]
 
+    # Filtro per FINITURA
+    if "FINITURA" in df_filtrato.columns:
+        opzioni_finitura = sorted(df_filtrato["FINITURA"].dropna().unique())
+        scelta_finitura = st.sidebar.selectbox("Finitura", opzioni_finitura)
+
+        # Estrai la descrizione finitura, prendendo la prima se ci sono più righe
+        descr_series = df_filtrato[df_filtrato["FINITURA"] == scelta_finitura]["DESCRIZIONE_FINITURA"].dropna()
+        scelta_descrizione = descr_series.iloc[0] if not descr_series.empty else "N/A"
+
+        # Aggiungi al dizionario filtri
+        filtri_attivi["Finitura selezionata"] = f"{scelta_finitura} - {scelta_descrizione}"
+
+        # Filtra il dataframe
+        df_filtrato = df_filtrato[df_filtrato["FINITURA"] == scelta_finitura]
+
+
     return df_filtrato.reset_index(drop=True), filtri_attivi
 
 
@@ -39,7 +55,7 @@ def show():
     col_listino_it = [
         'MACRO_SISTEMA', 'SISTEMA', 'CONCAT_3', 'C1', 'C1_DESCRIZIONE',
         'C2', 'C2_DESCRIZIONE', 
-        'UNIT_ARTICOLO_PADRE', 'LISTINO','ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE', 'IMMAGINE_NOME_FILE'
+        'UNIT_ARTICOLO_PADRE', 'FINITURA','DESCRIZIONE_FINITURA', 'LISTINO','ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE', 'IMMAGINE_NOME_FILE'
     ]
 
     df_listino_originale = st.session_state['df_listino_grouped'][col_listino_it]
@@ -102,8 +118,12 @@ def show():
                 st.markdown(f"***Famiglia:*** {df_filtrato.loc[selected_index, "MACRO_SISTEMA"]} - ***Sistema:*** {df_filtrato.loc[selected_index, "SISTEMA"]}  ")
                 st.markdown(f"***Categoria:*** {df_filtrato.loc[selected_index, "C1"]} {df_filtrato.loc[selected_index, "C2"]} - {df_filtrato.loc[selected_index, "C2_DESCRIZIONE"]}")
                 st.markdown(f"***Unit:*** {df_filtrato.loc[selected_index, "UNIT_ARTICOLO_PADRE"]} ")
-                st.metric("Prezzo listino", f"{df_filtrato.loc[selected_index, "LISTINO"]:.2f} €/unit")
+                st.markdown(f"***Prezzo listino:*** {df_filtrato.loc[selected_index, "LISTINO"]:.2f} €/unit")
         st.divider()
+    #st.dataframe(st.session_state["df_listino_vendita"])
+    #st.write(st.session_state["df_listino_vendita"].columns.tolist())
+
+
     # Aggiungi all'offerta
     if st.sidebar.button("➕ Aggiungi articoli selezionati alla quotazione"):
         selezionati = edited_df[edited_df[colrename_diz.get("SELEZIONA", "SELEZIONA")] == True].copy()

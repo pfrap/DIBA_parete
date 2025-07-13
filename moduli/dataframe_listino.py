@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def dataframe_listino(df_distinta, df_profili, df_costi_pareti):
+def dataframe_listino(df_distinta, df_profili, df_costi_pareti, df_distinta_vendita, df_costi_finiture):
     # Unione base con info peso per metro lineare
     df_listino = pd.merge(
         df_distinta,
@@ -9,11 +9,13 @@ def dataframe_listino(df_distinta, df_profili, df_costi_pareti):
         how="left",
         on="ARTICOLO_FIGLIO"
     )
+    df_listino=df_listino.merge(df_costi_finiture[["FINITURA", "DESCRIZIONE_FINITURA","COSTO_FINITURA"]],how="cross")
+    df_listino["COSTO_FINITURA"] = pd.to_numeric(df_listino["COSTO_FINITURA"], errors="coerce")
+    df_listino["COSTO_FINITURA_UNIT"] = df_listino["COSTO_FINITURA"]
 
     # Parametri base
     k_listino = 3.24
     costo_alluminio = 5
-    costo_finitura = 4
     costo_guar_fer_ml=4
     costo_guar_fer_ml_tr=2
     costo_imballo_cad=2
@@ -43,8 +45,8 @@ def dataframe_listino(df_distinta, df_profili, df_costi_pareti):
             df_listino.loc[mask, "IMPEGNO_ALLUMINIO"] * costo_alluminio
         )
         df_listino.loc[mask, "COSTO_FINITURA"] = (
-            (riferimento_barra_porte / 1000) * df_listino["COEFFICIENTE"] * costo_finitura
-        )
+            (riferimento_barra_porte / 1000) * df_listino["COEFFICIENTE"] * df_listino["COSTO_FINITURA_UNIT"]
+            )
 
     # --- ORIZZONTALI (tutti gli altri PROFILI non ancora calcolati) ---
     # Combina tutte le maschere già applicate
@@ -57,27 +59,27 @@ def dataframe_listino(df_distinta, df_profili, df_costi_pareti):
         df_listino.loc[mask_orizz, "IMPEGNO_ALLUMINIO"] * costo_alluminio
     )
     df_listino.loc[mask_orizz, "COSTO_FINITURA"] = (
-        (riferimento_barra_ml / 1000) * df_listino["COEFFICIENTE"] * costo_finitura
+        (riferimento_barra_ml / 1000) * df_listino["COEFFICIENTE"] * df_listino["COSTO_FINITURA_UNIT"]
     )
 
     # Colonne finali
     df_listino = df_listino[[
         "CONCAT_3","C1","C2", "ARTICOLO_FIGLIO_TIPO", "ARTICOLO_FIGLIO_COD_CONC",
         "ARTICOLO_FIGLIO", "COEFFICIENTE", "KG/ML",
-        "IMPEGNO_ALLUMINIO", "COSTO_ALLUMINIO", "COSTO_FINITURA"
+        "IMPEGNO_ALLUMINIO", "COSTO_ALLUMINIO", "FINITURA", "DESCRIZIONE_FINITURA","COSTO_FINITURA_UNIT","COSTO_FINITURA"
     ]]
 
     # Raggruppamento per codice articolo
     df_listino_grouped = (
-    df_listino.groupby("CONCAT_3").agg({
-        "C1": "first",
-        "C2": "first",
-        "KG/ML": "sum",
-        "IMPEGNO_ALLUMINIO": "sum",
-        "COSTO_ALLUMINIO": "sum",
-        "COSTO_FINITURA": "sum"
-    }).reset_index()
-    )
+        df_listino.groupby(["CONCAT_3","FINITURA", "DESCRIZIONE_FINITURA"]).agg({
+            "C1": "first",
+            "C2": "first",
+            "KG/ML": "sum",
+            "IMPEGNO_ALLUMINIO": "sum",
+            "COSTO_ALLUMINIO": "sum",
+            "COSTO_FINITURA": "sum"
+        }).reset_index()
+        )
     df_listino_grouped["COSTO_GUAR_FER"]=0
     df_listino_grouped["COSTO_IMBALLO"]=0
 
@@ -125,8 +127,23 @@ def dataframe_listino(df_distinta, df_profili, df_costi_pareti):
         "IMMAGINE_NOME_FILE",
         "UNIT_ARTICOLO_PADRE"
     ]
+    colonne_interessanti2 = [
+        "MACRO_SISTEMA",
+        "COD_SISTEMA",
+        "SISTEMA",
+        "C1",
+        "C1_DESCRIZIONE",
+        "C2",
+        "C2_DESCRIZIONE",
+        "CONCAT_3",
+        "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE_EN",
+        "ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE",
+        "IMMAGINE_NOME_FILE",
+        "UNIT_ARTICOLO_PADRE"
+    ]
 
     df_distinta_ridotto = df_distinta[colonne_interessanti].drop_duplicates(subset=["CONCAT_3"])
+    df_distinta_vendita_ridotto=df_distinta_vendita[colonne_interessanti2].drop_duplicates(subset=["CONCAT_3"])
 
     # Merge left mantenendo tutte le righe di df_listino_grouped
     df_listino_grouped = df_listino_grouped.merge(
@@ -150,6 +167,9 @@ def dataframe_listino(df_distinta, df_profili, df_costi_pareti):
         "KG/ML",
         "IMPEGNO_ALLUMINIO",
         "COSTO_ALLUMINIO",
+        "FINITURA",
+        "DESCRIZIONE_FINITURA",
+        "COSTO_FINITURA_UNIT",
         "COSTO_FINITURA",
         "COSTO_GUAR_FER",
         "COSTO_IMBALLO",
@@ -164,6 +184,30 @@ def dataframe_listino(df_distinta, df_profili, df_costi_pareti):
     colonne_presenti = [col for col in ordine_colonne if col in df_listino_grouped.columns]
     df_listino_grouped = df_listino_grouped[colonne_presenti]
 
-    
+    df_listino_vendita = pd.merge(
+        df_distinta_vendita,
+        df_listino_grouped[["CONCAT_3",
+                            "UNIT_ARTICOLO_PADRE",
+                            "FINITURA",
+                            "DESCRIZIONE_FINITURA",
+                            "LISTINO"]],
+        how="left",
+        left_on="ARTICOLO_FIGLIO",
+        right_on="CONCAT_3",
+        suffixes=("", "_listino")
+        )
+    df_listino_vendita_grouped = (
+        df_listino_vendita.groupby(["CONCAT_3","FINITURA","DESCRIZIONE_FINITURA"]).agg({
+            "LISTINO": "sum"
+        }).reset_index()
+        )
+        
+    df_listino_vendita_grouped = df_listino_vendita_grouped.merge(
+        df_distinta_vendita_ridotto,
+        on="CONCAT_3",
+        how="left"
+    )
+    colonne_presenti_2 = [col for col in ordine_colonne if col in df_listino_vendita_grouped.columns]
+    df_listino_vendita_grouped = df_listino_vendita_grouped[colonne_presenti_2]
 
-    return df_listino, df_listino_grouped, df_costi_pareti, riferimento_barra_porte, riferimento_barra_ml, costo_alluminio, costo_finitura
+    return df_listino, df_listino_grouped, df_listino_vendita_grouped, df_costi_pareti, riferimento_barra_porte, riferimento_barra_ml, costo_alluminio

@@ -15,6 +15,9 @@ def show():
     df_barre = pd.read_excel("dati/Tabella_barre.xlsx", dtype=str)
     df_profili = pd.read_excel("dati/Profili_r00.xlsx", dtype=str)
     df_costi_pareti = pd.read_excel("dati/Costi_pareti_r00.xlsx", dtype=str)
+    df_costi_finiture = pd.read_excel("dati/Costi_finiture.xlsx", dtype=str)
+
+    df_distinta_vendita = pd.read_excel("dati/Tabella_vendita.xlsx", dtype=str)
 
     # Calcoli e formattazione
     df_distinta["COEFFICIENTE"] = pd.to_numeric(df_distinta["COEFFICIENTE"], errors='coerce').fillna(0)
@@ -39,8 +42,13 @@ def show():
     df_merged_complete_grouped_peso = df_merged_complete.groupby("CONCAT_3")[["PESO_GREZZO_KG", "KG/ML"]].sum()
 
     # Creazione dataframe listino
-    df_listino, df_listino_grouped,df_costi_pareti,riferimento_barra_porte,riferimento_barra_ml,costo_alluminio,costo_finitura=dataframe_listino(df_distinta, df_profili,df_costi_pareti)
-    
+    df_listino, df_listino_grouped,df_listino_vendita,df_costi_pareti,riferimento_barra_porte,riferimento_barra_ml,costo_alluminio=dataframe_listino(df_distinta, 
+                                                                                                                                                 df_profili,
+                                                                                                                                                 df_costi_pareti, 
+                                                                                                                                                 df_distinta_vendita,
+                                                                                                                                                 df_costi_finiture)
+    st.session_state["df_listino_vendita"] = df_listino_vendita
+
     df_listino_grouped["LISTINO"] = pd.to_numeric(df_listino_grouped["LISTINO"], errors="coerce")
     st.session_state["df_listino_grouped"] = df_listino_grouped
 
@@ -121,7 +129,7 @@ def show():
                 with col0c:
                     st.warning("🖼️ Immagine non trovata nella cartella `images`")
         with tab_diba:
-            dibacolsel_1, dibacolsel_2 = st.columns([1,2])
+            dibacolsel_1, dibacolsel_2 = st.columns([1,1])
             with dibacolsel_2:
                 
                 ###############################################################################################
@@ -130,11 +138,11 @@ def show():
                 df_barre_filtrato = df_barre[df_barre["ARTICOLO_FIGLIO"].isin(articoli_filtrati)]
                 
                 lunghezze_disponibili = sorted(df_barre_filtrato["L_BARRA"].dropna().unique())
-                selected_length = st.selectbox("Lunghezza barra", lunghezze_disponibili)
+                selected_length = st.selectbox("Lunghezza barra da AS400", lunghezze_disponibili)
 
                 df_barre_lunghezza = df_barre_filtrato[df_barre_filtrato["L_BARRA"] == selected_length]
                 finiture_disponibili = sorted(df_barre_lunghezza["FINITURA"].dropna().unique())
-                selected_finitura = st.selectbox("Finitura", finiture_disponibili)
+                selected_finitura = st.selectbox("Finiture da AS400", finiture_disponibili)
                 df_desc = df_barre[df_barre["FINITURA"] == selected_finitura]
                 if not df_desc.empty:
                     descrizione_finitura = df_desc["DESCRIZIONE FINITURA"].iloc[0]
@@ -226,35 +234,74 @@ def show():
         st.warning("Nessun dato disponibile con i filtri selezionati.")
 
     with tab_listino:
-            # Formazione listino
-            if not df_merged_filtered.empty:
+        subcollist1, subcollist2 = st.columns([1,1])
+        # Formazione listino
+        if not df_merged_filtered.empty:
+            with subcollist1:
                 st.subheader("Formazione listino")
-                st.markdown(f"Costo alluminio: `{costo_alluminio} €/kg` Costo finitura: `{costo_finitura} €/ml/profilo`")
                 if df_merged_filtered["C1"].iloc[0]=="P":
                     st.markdown(f"L. barra di riferimento per calcolo impegno alluminio: `{riferimento_barra_porte}`")
-                lista_col_listino=["CONCAT_3",
-                                   "ARTICOLO_FIGLIO_TIPO",
-                                   "ARTICOLO_FIGLIO_COD_CONC",
-                                   "ARTICOLO_FIGLIO",
-                                   "COEFFICIENTE",
-                                   "KG/ML",
-                                   "IMPEGNO_ALLUMINIO",
-                                   "COSTO_ALLUMINIO",
-                                   "COSTO_FINITURA"]
-                lista_col_listino_grouped=["CONCAT_3",
-                                   "UNIT_ARTICOLO_PADRE",
-                                   "IMPEGNO_ALLUMINIO",
-                                   "COSTO_ALLUMINIO",
-                                   "COSTO_FINITURA",
-                                   "COSTO_GUAR_FER",
-                                   "COSTO_IMBALLO",
-                                   "COSTO_LAV",
-                                   "ALTRI_COSTI",
-                                   "COSTO_TOT",
-                                   "LISTINO"]
-                st.dataframe(df_listino_grouped[df_listino_grouped["CONCAT_3"]==selected_padre][lista_col_listino_grouped].rename(columns=colrename_diz))
-                st.dataframe(df_listino[df_listino["CONCAT_3"]==selected_padre][lista_col_listino].rename(columns=colrename_diz))
-    
+
+            # Estrazione finiture disponibili per il selected_padre
+            finiture_listino = df_listino[df_listino["CONCAT_3"] == selected_padre]["FINITURA"].dropna().unique()
+            finiture_listino = sorted(finiture_listino)
+            with subcollist2:
+                # Dropdown filtro finitura
+                selected_finitura_listino = st.selectbox("Finiture da listino", options= finiture_listino)
+
+            lista_col_listino = [
+                "CONCAT_3",
+                "ARTICOLO_FIGLIO_TIPO",
+                "ARTICOLO_FIGLIO_COD_CONC",
+                "ARTICOLO_FIGLIO",
+                "COEFFICIENTE",
+                "KG/ML",
+                "IMPEGNO_ALLUMINIO",
+                "COSTO_ALLUMINIO",
+                "FINITURA",
+                "COSTO_FINITURA_UNIT",
+                "COSTO_FINITURA"
+            ]
+            lista_col_listino_grouped = [
+                "CONCAT_3",
+                "UNIT_ARTICOLO_PADRE",
+                "FINITURA",
+                "COSTO_FINITURA",
+                "IMPEGNO_ALLUMINIO",
+                "COSTO_ALLUMINIO",
+                "COSTO_GUAR_FER",
+                "COSTO_IMBALLO",
+                "COSTO_LAV",
+                "ALTRI_COSTI",
+                "COSTO_TOT",
+                "LISTINO"
+            ]
+
+            # Filtra direttamente in base alla finitura selezionata
+            df_listino_filtered = df_listino[
+                (df_listino["CONCAT_3"] == selected_padre) &
+                (df_listino["FINITURA"] == selected_finitura_listino)
+            ]
+            df_listino_grouped_filtered = df_listino_grouped[
+                (df_listino_grouped["CONCAT_3"] == selected_padre) &
+                (df_listino_grouped["FINITURA"] == selected_finitura_listino)
+            ]
+            
+            # Recupera la descrizione e il costo unitario della finitura selezionata
+            if not df_listino_filtered.empty:
+                descrizione_finitura = df_listino_filtered["DESCRIZIONE_FINITURA"].iloc[0] if "DESCRIZIONE_FINITURA" in df_listino_filtered.columns else ""
+                costo_finitura_unitario = df_listino_filtered["COSTO_FINITURA_UNIT"].iloc[0]
+            else:
+                descrizione_finitura = ""
+                costo_finitura_unitario = 0.0
+
+            with subcollist1:
+                st.markdown(f"Costo alluminio: `{costo_alluminio} €/kg`")
+                st.markdown(f"Finitura: `{selected_finitura_listino} - {descrizione_finitura}` Costo finitura: `{costo_finitura_unitario} €/ml/profilo`")
+
+            st.dataframe(df_listino_grouped_filtered[lista_col_listino_grouped].rename(columns=colrename_diz))
+            st.dataframe(df_listino_filtered[lista_col_listino].rename(columns=colrename_diz))
+
     # Download CSV distinta completa
     csv_df_merged_complete=df_merged_complete.to_csv(index=False)
     st.sidebar.download_button("Distinta completa", data=csv_df_merged_complete, file_name="distinta_completa.csv", mime="text/csv")
