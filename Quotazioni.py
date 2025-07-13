@@ -1,131 +1,108 @@
 import streamlit as st
 import pandas as pd
-import io
-from datetime import datetime
+from io import BytesIO
 
 def show():
-    st.title("Offerta commerciale")
+    st.title("Gestione quotazioni")
 
-    # 📥 Importazione di un'offerta salvata
-    st.subheader("📥 Importa offerta esistente")
-    offerte_disponibili = list(st.session_state.get("offerte_salvate", {}).keys())
-    with st.expander("🔽 Seleziona offerta salvata da importare"):
-        if offerte_disponibili:
-            offerta_scelta = st.selectbox("Offerte salvate disponibili", offerte_disponibili)
-            if st.button("📤 Importa offerta selezionata"):
-                st.session_state["df_quotazione"] = st.session_state["offerte_salvate"][offerta_scelta].copy()
-                st.success(f"✅ Offerta '{offerta_scelta}' importata con successo.")
-        else:
-            st.info("🔒 Nessuna offerta salvata trovata.")
+    # Inizializza dizionario se non esiste
+    if 'df_quotazione' not in st.session_state:
+        st.session_state['df_quotazione'] = {}
 
-    # 🚫 Nessuna offerta ancora creata
-    if 'df_quotazione' not in st.session_state or not st.session_state['df_quotazione']:
-        st.warning("⚠️ Nessuna offerta disponibile. Aggiungi articoli dal listino.")
-        return
+    df_quotazione = st.session_state['df_quotazione']
 
-    # 💼 Visualizza e modifica le sessioni dell’offerta
-    for nome_sessione, df_sessione in st.session_state['df_quotazione'].items():
-        st.markdown(f"## 🗂 {nome_sessione}")
+    # Sidebar per Import/Export
+    with st.sidebar:
+        st.header("📁 Import/Export")
 
-        with st.expander("📋 Articoli in offerta", expanded=False):
-            st.dataframe(df_sessione, use_container_width=True)
+        uploaded_file = st.file_uploader("📤 Importa quotazione (Excel)", type=["xlsx"])
+        if uploaded_file:
+            xls = pd.read_excel(uploaded_file, sheet_name=None)
+            st.session_state["df_quotazione"] = xls
+            st.success("✅ Quotazione importata correttamente.")
+            st.rerun()
 
-        col1, col2 = st.columns([2, 2])
-        with col1:
-            sconto_perc = st.number_input(
-                f"Sconto su {nome_sessione} (%)", min_value=0, max_value=100, value=0, step=1, key=f"sconto_{nome_sessione}"
-            )
-        with col2:
-            if st.button(f"💸 Applica sconto a {nome_sessione}", key=f"sconto_btn_{nome_sessione}"):
-                if "LISTINO" in df_sessione.columns:
-                    df_mod = df_sessione.copy()
-                    df_mod["PREZZO_SCONTATO"] = df_mod["LISTINO"] * (1 - sconto_perc / 100)
-                    st.session_state["df_quotazione"][nome_sessione] = df_mod
-                    st.success(f"Sconto del {sconto_perc}% applicato.")
-                else:
-                    st.error("❌ Colonna 'LISTINO' non presente.")
-
-        # Rimuovi articoli
-        with st.expander("🗑 Rimuovi articoli"):
-            df_mod = df_sessione.copy()
-            df_mod["RIMUOVI"] = False
-            df_editor = st.data_editor(
-                df_mod,
-                key=f"rimuovi_editor_{nome_sessione}",
-                use_container_width=True,
-                disabled=df_mod.columns.difference(["RIMUOVI"]).tolist()
-            )
-            if st.button(f"✂️ Conferma rimozione da {nome_sessione}", key=f"rimuovi_btn_{nome_sessione}"):
-                df_filtrato = df_editor[df_editor["RIMUOVI"] == False].drop(columns=["RIMUOVI"])
-                st.session_state["df_quotazione"][nome_sessione] = df_filtrato
-                st.success("✅ Articoli rimossi.")
-
-    st.divider()
-
-    # ➕ Aggiungi articolo custom
-    st.subheader("➕ Aggiungi articolo custom")
-    with st.form("aggiungi_custom"):
-        col1, col2 = st.columns(2)
-        with col1:
-            codice = st.text_input("Codice", value="CUSTOM001")
-            c1 = st.text_input("Categoria 1", value="Custom")
-            c2 = st.text_input("Categoria 2", value="Manuale")
-        with col2:
-            descrizione = st.text_input("Descrizione", value="Articolo custom")
-            prezzo = st.number_input("Prezzo (€)", min_value=0.0, value=100.0, step=1.0)
-
-        sessioni_possibili = list(st.session_state['df_quotazione'].keys())
-        sessione_target = st.selectbox("Sessione di destinazione", sessioni_possibili)
-
-        if st.form_submit_button("➕ Aggiungi articolo"):
-            nuovo_articolo = pd.DataFrame([{
-                "CONCAT_3": codice,
-                "C1": c1,
-                "C2": c2,
-                "DESCRIZIONE": descrizione,
-                "LISTINO": prezzo
-            }])
-            st.session_state['df_quotazione'][sessione_target] = pd.concat(
-                [st.session_state['df_quotazione'][sessione_target], nuovo_articolo],
-                ignore_index=True
-            )
-            st.success(f"✅ Articolo custom aggiunto a {sessione_target}")
-
-    st.divider()
-
-    # 💾 Salva - Duplica - Esporta
-    st.subheader("📦 Gestione offerta")
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        if st.button("💾 Salva offerta"):
-            if "offerte_salvate" not in st.session_state:
-                st.session_state["offerte_salvate"] = {}
-            nome_offerta = f"Offerta_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            st.session_state["offerte_salvate"][nome_offerta] = st.session_state["df_quotazione"].copy()
-            st.success(f"✅ Offerta salvata come: {nome_offerta}")
-
-    with col2:
-        if offerte_disponibili:
-            dup_scelta = st.selectbox("🗂 Duplica offerta", offerte_disponibili, key="dup_select")
-            if st.button("📑 Duplica selezionata"):
-                nuova_offerta = {
-                    k + "_copy": v.copy() for k, v in st.session_state["offerte_salvate"][dup_scelta].items()
-                }
-                st.session_state["df_quotazione"].update(nuova_offerta)
-                st.success(f"📄 Offerta '{dup_scelta}' duplicata.")
-
-    with col3:
-        if st.button("📤 Esporta in Excel"):
-            buffer = io.BytesIO()
-            with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-                for nome, df in st.session_state["df_quotazione"].items():
-                    df.to_excel(writer, sheet_name=nome[:31], index=False)
-                writer.close()
-            buffer.seek(0)
+        if df_quotazione and st.button("📥 Esporta quotazione corrente"):
+            buffer = BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                for key, df in df_quotazione.items():
+                    df.to_excel(writer, sheet_name=key, index=False)
             st.download_button(
-                "⬇️ Scarica Excel",
-                data=buffer,
-                file_name=f"offerta_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                label="⬇️ Scarica file Excel",
+                data=buffer.getvalue(),
+                file_name="quotazione_export.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
+    # Visualizzazione e gestione sezioni
+    for nome_sezione, df_sezione in df_quotazione.items():
+        st.subheader(f"Sezione:`{nome_sezione}`")
+
+        # Colonne visibili e modificabili
+        col_vis = ['SISTEMA', 'C1_DESCRIZIONE', 'CONCAT_3', 'ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE', 'UNIT_ARTICOLO_PADRE', 'LISTINO']
+        col_agg = ['Q_TA', 'TOTALE', 'SELEZIONA']
+        tutte_colonne = col_vis + col_agg
+
+        # Aggiungi colonne mancanti se non presenti
+        for col in col_agg:
+            if col not in df_sezione.columns:
+                if col == 'Q_TA':
+                    df_sezione[col] = 1.0
+                elif col == 'TOTALE':
+                    df_sezione[col] = df_sezione.get("LISTINO", 0.0)
+                else:
+                    df_sezione[col] = False
+
+        # Layout a due colonne per editor e totali
+        col_editor, col_totale = st.columns([10, 1])
+
+        with col_editor:
+            # Editor senza la colonna TOTALE
+            edited_df = st.data_editor(
+                df_sezione[[c for c in tutte_colonne if c != 'TOTALE']],  # Esclude TOTALE
+                key=f"editor_{nome_sezione}",
+                use_container_width=True,
+                hide_index=True,
+                num_rows="dynamic",
+                disabled=[c for c in tutte_colonne if c not in ['Q_TA', 'SELEZIONA']]
+            )
+
+        # Ricalcola colonna TOTALE in tempo reale
+        edited_df["TOTALE"] = edited_df["LISTINO"] * edited_df["Q_TA"]
+
+        # Aggiorna df_quotazione con modifiche su Q_TA e SELEZIONA
+        df_quotazione[nome_sezione].update(edited_df)
+
+        with col_totale:
+            # Mostra solo la colonna TOTALE come anteprima aggiornata
+            st.data_editor(
+                edited_df[["TOTALE"]],
+                key=f"totali_{nome_sezione}",
+                use_container_width=True,
+                hide_index=True,
+                disabled=True
+            )
+
+        # Selezionati
+        selezionati = edited_df[edited_df['SELEZIONA'] == True]
+
+        # Azioni: Elimina o Duplica
+        az1, az2 = st.columns(2)
+        with az1:
+            if st.button(f"🗑 Elimina selezionati ({nome_sezione})"):
+                df_filtrato = df_sezione[~edited_df['SELEZIONA']].reset_index(drop=True)
+                df_quotazione[nome_sezione] = df_filtrato
+                st.rerun()
+        with az2:
+            if st.button(f"➕ Duplica selezionati ({nome_sezione})"):
+                duplicati = df_sezione[edited_df['SELEZIONA']].copy()
+                duplicati['SELEZIONA'] = False
+                df_quotazione[nome_sezione] = pd.concat([df_sezione, duplicati], ignore_index=True)
+                st.rerun()
+
+        # Totale della sezione
+        totale_sezione = edited_df["TOTALE"].sum()
+        st.markdown(f"Totale sezione {nome_sezione}: `{totale_sezione:,.2f} €`")
+
+    # Aggiorna lo stato
+    st.session_state['df_quotazione'] = df_quotazione

@@ -45,7 +45,6 @@ def show():
     df_listino_originale = st.session_state['df_listino_grouped'][col_listino_it]
     df_filtrato, filtri_attivi = filtro_sidebar_listino(df_listino_originale)
 
-
     # Aggiungiamo SELEZIONA solo se non esiste già
     if "SELEZIONA" not in df_filtrato.columns:
         df_filtrato["SELEZIONA"] = False
@@ -60,7 +59,7 @@ def show():
     df_vis = df_vis[cols]
     
     ##################################### Layout
-    st.title("Listino Pareti")
+    st.title("Listino pareti")
     
     Cont_dati=st.container()
     Cont_editor=st.container()
@@ -106,27 +105,46 @@ def show():
                 st.metric("Prezzo listino", f"{df_filtrato.loc[selected_index, "LISTINO"]:.2f} €/unit")
         st.divider()
     # Aggiungi all'offerta
-    if st.button("➕ Aggiungi articoli selezionati all'offerta"):
-        if 'df_quotazione' not in st.session_state:
-            st.session_state['df_quotazione'] = {}
+    if st.sidebar.button("➕ Aggiungi articoli selezionati alla quotazione"):
+        selezionati = edited_df[edited_df[colrename_diz.get("SELEZIONA", "SELEZIONA")] == True].copy()
 
-        if "sessione_1" not in st.session_state['df_quotazione']:
-            st.session_state['df_quotazione']["sessione_1"] = pd.DataFrame()
-
-        selezionati = edited_df[edited_df[colrename_diz.get("SELEZIONA", "SELEZIONA")] == True]
         if selezionati.empty:
             st.warning("Seleziona almeno un articolo per aggiungerlo all'offerta.")
         else:
-            # Rimuovi la colonna SELEZIONA e ripristina i nomi originali
+            # Rimuove la colonna selezione e torna ai nomi originali
             selezionati = selezionati.drop(columns=[colrename_diz.get("SELEZIONA", "SELEZIONA")])
-            selezionati.columns = [k for k, v in colrename_diz.items() if v in selezionati.columns]
+            reverse_colrename_diz = {v: k for k, v in colrename_diz.items()}
+            selezionati.rename(columns=reverse_colrename_diz, inplace=True)
 
-            df_offerta = st.session_state['df_quotazione']["sessione_1"]
-            df_offerta = pd.concat([df_offerta, selezionati])
-            df_offerta = df_offerta.drop_duplicates(subset=["CONCAT_3"], keep='last').reset_index(drop=True)
-            st.session_state['df_quotazione']["sessione_1"] = df_offerta
+            # Colonne necessarie per la quotazione
+            col_sezione_quotazione = ['SISTEMA', 'C1_DESCRIZIONE', 'CONCAT_3', 'ID_COMPONENTE_ARTICOLO_PADRE_DESCRIZIONE', 'UNIT_ARTICOLO_PADRE', 'LISTINO']
+            selezionati = selezionati[col_sezione_quotazione]
 
-            st.success(f"Aggiunti {len(selezionati)} articoli all'offerta (sessione_1).")
+            # Aggiunge colonne Q_TA e TOTALE
+            selezionati["Q_TA"] = 1.0
+            selezionati["TOTALE"] = selezionati["LISTINO"] * selezionati["Q_TA"]
+
+            # Inizializza df_quotazione se non esiste
+            if "df_quotazione" not in st.session_state:
+                st.session_state["df_quotazione"] = {}
+
+            # Nome sezione di default
+            sezione_corrente = "Sezione_1"
+
+            # Inizializza sezione se non esiste
+            if sezione_corrente not in st.session_state["df_quotazione"]:
+                st.session_state["df_quotazione"][sezione_corrente] = pd.DataFrame(columns=col_sezione_quotazione + ["Q_TA", "TOTALE"])
+
+            # Aggiunge gli articoli evitando duplicati
+            df_corrente = st.session_state["df_quotazione"][sezione_corrente]
+            df_aggiornato = pd.concat([df_corrente, selezionati], ignore_index=True)
+            df_aggiornato = df_aggiornato.drop_duplicates(subset=["CONCAT_3"], keep='last')
+
+            st.session_state["df_quotazione"][sezione_corrente] = df_aggiornato
+
+            st.sidebar.success(f"Aggiunti {len(selezionati)} articoli alla quotazione ({sezione_corrente}).")
 
 if __name__ == "__main__":
     show()
+
+

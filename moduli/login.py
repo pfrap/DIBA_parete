@@ -1,7 +1,7 @@
 import streamlit as st
 
 def login():
-    #st.session_state["logged_in"] = True
+    st.session_state["logged_in"] = True
     credenziali = st.secrets["auth"]
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
